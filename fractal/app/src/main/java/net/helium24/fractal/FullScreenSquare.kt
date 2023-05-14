@@ -29,7 +29,7 @@ class FullScreenSquare {
         void main() {
           vec4 transformedPos = uMVPMatrix * vPosition;
           gl_Position = transformedPos;
-          fs_pos = transformedPos.xy;
+          fs_pos = vPosition.xy + vec2(0.5, 0.5); // transformedPos.xy;
         }
     """
 
@@ -38,10 +38,14 @@ class FullScreenSquare {
         precision mediump float;
         varying vec2 fs_pos;
         uniform vec4 vColor;
+        uniform sampler2D fractalGradient;
+   
         void main() {
-          gl_FragColor = vec4(fs_pos.x, fs_pos.y, vColor.z, 1.0);
+          gl_FragColor = vec4(texture2D(fractalGradient, vec2(fs_pos.x, 0)).xyz, 1.0); // , abs(fs_pos.x), 1.0);
         }
     """
+
+    private var fractalGradientTexture: Int = 0
 
     init {
         val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
@@ -62,6 +66,40 @@ class FullScreenSquare {
             var logInfo = "Linking of program failed. ${GLES20.glGetProgramInfoLog(mProgram)}";
             throw Exception(logInfo)
         }
+
+        // Create gradient texture
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        val generatedTexture = IntArray(1)
+        GLES20.glGenTextures(1, generatedTexture, 0)
+        fractalGradientTexture = generatedTexture[0]
+
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fractalGradientTexture)
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_REPEAT);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_REPEAT);
+
+        // Greyscale test (for now)
+        var gradientData = mutableListOf<Byte>()
+        for (i in 0 until 256) {
+            gradientData.add(i.toUByte().toByte())
+            gradientData.add(i.toUByte().toByte())
+            gradientData.add(i.toUByte().toByte())
+        }
+
+        val gradientBuffer: ByteBuffer =
+            // (# of colors * RGB * 1 bytes per byte
+            ByteBuffer.allocateDirect(256 * 3 * 1).run {
+                order(ByteOrder.nativeOrder())
+                .apply {
+                    put(gradientData.toByteArray())
+                    position(0)
+                }
+            }
+
+        GLES20.glTexImage2D(GLES20.GL_TEXTURE_2D, 0, GLES20.GL_RGB,
+            256, 1,
+            0, GLES20.GL_RGB, GLES20.GL_UNSIGNED_BYTE, gradientBuffer)
     }
 
     private val drawOrder = shortArrayOf(0, 1, 2, 0, 2, 3) // order to draw vertices
@@ -98,6 +136,7 @@ class FullScreenSquare {
     private var positionHandle: Int = 0
     private var mColorHandle: Int = 0
     private var vPMatrixHandle: Int = 0
+    private var fractalGradientLoc: Int = 0
 
     private val vertexCount: Int = squareCoords.size / COORDS_PER_VERTEX
     private val vertexStride: Int = COORDS_PER_VERTEX * 4 // 4 bytes per vertex
@@ -128,6 +167,12 @@ class FullScreenSquare {
 
                 // Set color for drawing the triangle
                 GLES20.glUniform4fv(colorHandle, 1, color, 0)
+            }
+
+            fractalGradientLoc = GLES20.glGetUniformLocation(mProgram, "fractalGradient").also { gradientHandle ->
+                GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fractalGradientTexture)
+                GLES20.glUniform1i(gradientHandle, 0)
             }
 
             vPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix").also { matrixHandle ->
