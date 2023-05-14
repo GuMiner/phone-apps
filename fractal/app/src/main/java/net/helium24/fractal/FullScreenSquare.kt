@@ -1,6 +1,8 @@
 package net.helium24.fractal
 
 import android.opengl.GLES20
+import android.opengl.GLES20.glGetProgramInfoLog
+import java.lang.Exception
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -19,19 +21,27 @@ var squareCoords = floatArrayOf(
 class FullScreenSquare {
     private var mProgram: Int
 
-    private val vertexShaderCode =
-        "attribute vec4 vPosition;" +
-                "void main() {" +
-                "  gl_Position = vPosition;" +
-                "}"
+    private val vertexShaderCode = """
+        uniform mat4 uMVPMatrix;
+        attribute vec4 vPosition;
+        varying vec2 fs_pos;
+
+        void main() {
+          vec4 transformedPos = uMVPMatrix * vPosition;
+          gl_Position = transformedPos;
+          fs_pos = transformedPos.xy;
+        }
+    """
 
     // TODO anything interesting for fractals will be here!
-    private val fragmentShaderCode =
-        "precision mediump float;" +
-                "uniform vec4 vColor;" +
-                "void main() {" +
-                "  gl_FragColor = vColor;" +
-                "}"
+    private val fragmentShaderCode = """
+        precision mediump float;
+        varying vec2 fs_pos;
+        uniform vec4 vColor;
+        void main() {
+          gl_FragColor = vec4(fs_pos.x, fs_pos.y, vColor.z, 1.0);
+        }
+    """
 
     init {
         val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
@@ -42,6 +52,15 @@ class FullScreenSquare {
             GLES20.glAttachShader(it, vertexShader)
             GLES20.glAttachShader(it, fragmentShader)
             GLES20.glLinkProgram(it)
+        }
+
+        val linkStatus = IntArray(1)
+        GLES20.glGetProgramiv(mProgram, GLES20.GL_LINK_STATUS, linkStatus, 0)
+
+        if (linkStatus[0] == 0) {
+            GLES20.glDeleteProgram(mProgram)
+            var logInfo = "Linking of program failed. ${GLES20.glGetProgramInfoLog(mProgram)}";
+            throw Exception(logInfo)
         }
     }
 
@@ -78,11 +97,12 @@ class FullScreenSquare {
 
     private var positionHandle: Int = 0
     private var mColorHandle: Int = 0
+    private var vPMatrixHandle: Int = 0
 
     private val vertexCount: Int = squareCoords.size / COORDS_PER_VERTEX
     private val vertexStride: Int = COORDS_PER_VERTEX * 4 // 4 bytes per vertex
 
-    fun draw() {
+    fun draw(mvpMatrix: FloatArray) {
         // Add program to OpenGL ES environment
         GLES20.glUseProgram(mProgram)
 
@@ -108,6 +128,11 @@ class FullScreenSquare {
 
                 // Set color for drawing the triangle
                 GLES20.glUniform4fv(colorHandle, 1, color, 0)
+            }
+
+            vPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix").also { matrixHandle ->
+                // Pass the projection and view transformation to the shader
+                GLES20.glUniformMatrix4fv(matrixHandle, 1, false, mvpMatrix, 0)
             }
 
             // Draw the triangle

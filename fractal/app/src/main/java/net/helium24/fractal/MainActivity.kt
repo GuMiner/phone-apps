@@ -41,6 +41,8 @@ class MainActivity : ComponentActivity() {
                     Column() {
                         Greeting("Android")
                         FractalChoice(fractalType = FractalType.Mandelbrot)
+
+                        // https://developer.android.com/jetpack/compose/migrate/interoperability-apis/views-in-compose
                         AndroidView(
                             factory = { FractalSurfaceView(it) }
                         )

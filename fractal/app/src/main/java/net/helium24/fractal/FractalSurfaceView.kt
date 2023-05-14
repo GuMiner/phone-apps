@@ -11,6 +11,7 @@ class FractalSurfaceView(context: Context) : GLSurfaceView(context) {
 
         // Create an OpenGL ES 2.0 context
         setEGLContextClientVersion(2)
+        this.debugFlags = DEBUG_CHECK_GL_ERROR or DEBUG_LOG_GL_CALLS
 
         renderer = FractalRenderer()
 
