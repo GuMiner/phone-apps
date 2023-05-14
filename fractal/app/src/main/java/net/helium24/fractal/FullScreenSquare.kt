@@ -1,8 +1,6 @@
 package net.helium24.fractal
 
 import android.opengl.GLES20
-import android.opengl.GLES20.glGetProgramInfoLog
-import java.lang.Exception
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -29,7 +27,7 @@ class FullScreenSquare {
         void main() {
           vec4 transformedPos = uMVPMatrix * vPosition;
           gl_Position = transformedPos;
-          fs_pos = vPosition.xy + vec2(0.5, 0.5); // transformedPos.xy;
+          fs_pos = vPosition.xy; // transformedPos.xy;
         }
     """
 
@@ -41,7 +39,37 @@ class FullScreenSquare {
         uniform sampler2D fractalGradient;
    
         void main() {
-          gl_FragColor = vec4(texture2D(fractalGradient, vec2(fs_pos.x, 0)).xyz, 1.0); // , abs(fs_pos.x), 1.0);
+            int maxIterations = 25;
+            int iterations = 0;
+            float time = 4.0;
+            float dist = 0.50;
+            float speed = 0.01;
+            float thresholdSqd = 4.0;
+            
+            
+            vec2 point = vec2(cos(time*speed) * dist, sin(time * speed) * dist);
+            
+            // Make this a smaller quad by increasing our x and y positoins
+            vec2 z = vec2(fs_pos.x * 2.5, fs_pos.y * 2.5);
+            while (iterations < maxIterations && dot(z, z) < thresholdSqd)
+            {
+                vec2 zSqd = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + point;
+                z = zSqd + vec2(0, 0.123); // c
+                ++iterations;
+            }
+            
+            if (iterations == maxIterations || iterations < 2)
+            {
+                gl_FragColor = vec4(0, 0, 0, 1);
+            }
+            else
+            {
+               // gl_FragColor = vec4(1, 0, 0, 1);
+                gl_FragColor = vec4(texture2D(fractalGradient, vec2(float(iterations) / float(maxIterations), 1.0)).xy, 0.2, 1.0);
+            }
+        
+        
+          // gl_FragColor = vec4(texture2D(fractalGradient, vec2(fs_pos.x, 0)).xyz, 1.0); // , abs(fs_pos.x), 1.0);
         }
     """
 
@@ -130,6 +158,14 @@ class FullScreenSquare {
         return GLES20.glCreateShader(type).also { shader ->
             GLES20.glShaderSource(shader, shaderCode)
             GLES20.glCompileShader(shader)
+
+            val compiled = IntArray(1)
+            GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0)
+
+            if (compiled[0] == 0) {
+                var compileError = "Compilation\n" + GLES20.glGetShaderInfoLog(compiled[0]);
+                println(compileError)
+            }
         }
     }
 

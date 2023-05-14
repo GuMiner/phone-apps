@@ -12,7 +12,7 @@ class FractalRenderer : GLSurfaceView.Renderer {
     private lateinit var mSquare: FullScreenSquare
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
         // Set the background frame color
-        GLES20.glClearColor(0.0f, 1.0f, 0.0f, 1.0f)
+        GLES20.glClearColor(0.0f, 0.125f, 0.0f, 1.0f)
         mSquare = FullScreenSquare()
     }
 
