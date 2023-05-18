@@ -10,24 +10,24 @@ import java.nio.ShortBuffer
 // number of coordinates per vertex in this array
 const val COORDS_PER_VERTEX = 3
 var squareCoords = floatArrayOf(
-    -0.5f,  0.5f, 0.0f,      // top left
-    -0.5f, -0.5f, 0.0f,      // bottom left
-    0.5f, -0.5f, 0.0f,      // bottom right
-    0.5f,  0.5f, 0.0f       // top right
+    -1f,  1f, 0.0f,      // top left
+    -1f, -1f, 0.0f,      // bottom left
+    1f, -1f, 0.0f,       // bottom right
+    1f,  1f, 0.0f        // top right
 )
 
 class FullScreenSquare {
     private var mProgram: Int
 
     private val vertexShaderCode = """
-        uniform mat4 uMVPMatrix;
         attribute vec4 vPosition;
+        uniform float aspectRatio;
         varying vec2 fs_pos;
 
         void main() {
-          vec4 transformedPos = uMVPMatrix * vPosition;
-          gl_Position = transformedPos;
-          fs_pos = vPosition.xy; // transformedPos.xy;
+          vec4 transformedPos = vPosition;
+          gl_Position = transformedPos; // Always cover the whole drawing area
+          fs_pos = vPosition.xy * vec2(aspectRatio, 1.0); // Rescale appropriately
         }
     """
 
@@ -35,26 +35,28 @@ class FullScreenSquare {
     private val fragmentShaderCode = """
         precision mediump float;
         varying vec2 fs_pos;
+  
         uniform vec4 vColor;
+        uniform float time;
+        uniform vec2 touchPos;
         uniform sampler2D fractalGradient;
    
         void main() {
             int maxIterations = 25;
             int iterations = 0;
-            float time = 4.0;
             float dist = 0.50;
-            float speed = 0.01;
+            float speed = 0.5;
             float thresholdSqd = 4.0;
             
             
-            vec2 point = vec2(cos(time*speed) * dist, sin(time * speed) * dist);
+            vec2 timePoint = vec2(cos(time*speed) * dist, sin(time * speed) * dist);
             
             // Make this a smaller quad by increasing our x and y positoins
             vec2 z = vec2(fs_pos.x * 2.5, fs_pos.y * 2.5);
             while (iterations < maxIterations && dot(z, z) < thresholdSqd)
             {
-                vec2 zSqd = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + point;
-                z = zSqd + vec2(0, 0.123); // c
+                vec2 zSqd = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y);
+                z = zSqd + touchPos + timePoint;
                 ++iterations;
             }
             
@@ -169,20 +171,14 @@ class FullScreenSquare {
         }
     }
 
-    private var positionHandle: Int = 0
-    private var mColorHandle: Int = 0
-    private var vPMatrixHandle: Int = 0
-    private var fractalGradientLoc: Int = 0
-
-    private val vertexCount: Int = squareCoords.size / COORDS_PER_VERTEX
     private val vertexStride: Int = COORDS_PER_VERTEX * 4 // 4 bytes per vertex
 
-    fun draw(mvpMatrix: FloatArray) {
+    fun draw(fractalOptions: FractalOptions) {
         // Add program to OpenGL ES environment
         GLES20.glUseProgram(mProgram)
 
         // get handle to vertex shader's vPosition member
-        positionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition").also {
+        GLES20.glGetAttribLocation(mProgram, "vPosition").also {
 
             // Enable a handle to the triangle vertices
             GLES20.glEnableVertexAttribArray(it)
@@ -198,27 +194,33 @@ class FullScreenSquare {
             )
 
             // get handle to fragment shader's vColor member
-            mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor").also { colorHandle ->
+            GLES20.glGetUniformLocation(mProgram, "vColor").also { colorHandle ->
                 val color = floatArrayOf(1f, 1f, 0f, 1.0f)
 
                 // Set color for drawing the triangle
                 GLES20.glUniform4fv(colorHandle, 1, color, 0)
             }
 
-            fractalGradientLoc = GLES20.glGetUniformLocation(mProgram, "fractalGradient").also { gradientHandle ->
+            GLES20.glGetUniformLocation(mProgram, "aspectRatio").also { aspectRatioHandle ->
+                GLES20.glUniform1f(aspectRatioHandle, fractalOptions.aspectRatio)
+            }
+
+            GLES20.glGetUniformLocation(mProgram, "touchPos").also { aspectRatioHandle ->
+                GLES20.glUniform2f(aspectRatioHandle, fractalOptions.touchX, fractalOptions.touchY)
+            }
+
+            GLES20.glGetUniformLocation(mProgram, "time").also { aspectRatioHandle ->
+                GLES20.glUniform1f(aspectRatioHandle, fractalOptions.currentTime)
+            }
+
+            GLES20.glGetUniformLocation(mProgram, "fractalGradient").also { gradientHandle ->
                 GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
                 GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fractalGradientTexture)
                 GLES20.glUniform1i(gradientHandle, 0)
             }
 
-            vPMatrixHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix").also { matrixHandle ->
-                // Pass the projection and view transformation to the shader
-                GLES20.glUniformMatrix4fv(matrixHandle, 1, false, mvpMatrix, 0)
-            }
-
-            // Draw the triangle
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.size,
-                GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
+            // Draw the full-screeen fractal
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, drawOrder.size, GLES20.GL_UNSIGNED_SHORT, drawListBuffer);
 
             // Disable vertex array
             GLES20.glDisableVertexAttribArray(it)

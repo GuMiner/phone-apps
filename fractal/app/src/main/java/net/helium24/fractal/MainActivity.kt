@@ -32,10 +32,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import net.helium24.fractal.ui.theme.FractalTheme
 
-enum class FractalType {
-    Julia, Mandelbrot
-}
-
 // https://developer.android.com/jetpack/compose/tutorial
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,11 +42,7 @@ class MainActivity : ComponentActivity() {
                 var selectedFractal = remember { mutableStateOf(FractalType.Julia) }
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column() {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            About()
-                            Spacer(Modifier.weight(1f))
-                            Credits()
-                        }
+                        InfoText()
                         FractalChoice(selectedFractal)
 
                         // https://developer.android.com/jetpack/compose/migrate/interoperability-apis/views-in-compose
@@ -66,6 +58,15 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun InfoText() {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        About()
+        Spacer(Modifier.weight(1f))
+        Credits()
+    }
+}
+
+@Composable
 fun About() {
     Text(
         text = "Demo Fractal Viewer",
@@ -77,39 +78,24 @@ fun About() {
 fun Credits() {
     Text(
         text = "05/23 Gustave",
+
         fontStyle = FontStyle.Italic,
-        style = TextStyle(
+        style = TextStyle( // Theoretically this could move to 'Type.kt'
             fontSize = 12.sp,
         ),
-        modifier = Modifier
-            .padding(horizontal = 2.dp, vertical = 2.dp)
+        modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp)
     )
 }
 
-@Preview(showBackground = true)
-@Composable
-fun AppPreview() {
-    var selectedFractal = remember { mutableStateOf(FractalType.Julia) }
-    FractalTheme {
-        Column() {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                About()
-                Spacer(Modifier.weight(1f))
-                Credits()
-            }
-            FractalChoice(selectedFractal)
-        }
-    }
-}
-
+/**
+ * Creates a radio button for each FractalType,
+ * linking each so button changes apply to chosenFractal
+ */
 @Composable
 fun FractalChoice(chosenFractal: MutableState<FractalType>) {
-    val radioOptions = FractalType.values()
-// Note that Modifier.selectableGroup() is essential to ensure correct accessibility behavior
-
-    Row(Modifier.selectableGroup(),
+    Row(Modifier.selectableGroup(), // As per Android docs, recommended for screenreaders
         verticalAlignment = Alignment.CenterVertically) {
-        radioOptions.forEach { text ->
+        FractalType.values().forEach { text ->
             Column(
                 Modifier
                     .selectable(
@@ -122,7 +108,7 @@ fun FractalChoice(chosenFractal: MutableState<FractalType>) {
                 Row() {
                     RadioButton(
                         selected = (text == chosenFractal.value),
-                        onClick = null // null recommended for accessibility with screenreaders
+                        onClick = null // As per Android docs, recommended for screenreaders
                     )
                     Text(
                         text = text.name,
@@ -131,6 +117,17 @@ fun FractalChoice(chosenFractal: MutableState<FractalType>) {
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AppPreview() {
+    FractalTheme {
+        Column() {
+            InfoText()
+            FractalChoice(remember { mutableStateOf(FractalType.Julia) })
         }
     }
 }
