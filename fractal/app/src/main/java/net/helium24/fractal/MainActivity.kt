@@ -1,6 +1,7 @@
 package net.helium24.fractal
 
 import android.os.Bundle
+import android.widget.ToggleButton
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,7 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -23,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
@@ -40,15 +43,29 @@ class MainActivity : ComponentActivity() {
             FractalTheme {
                 // A surface container using the 'background' color from the theme
                 var selectedFractal = remember { mutableStateOf(FractalType.Julia) }
+                var animateState = true;
+                var animate = remember { mutableStateOf(animateState) }
                 Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     Column() {
                         InfoText()
-                        FractalChoice(selectedFractal)
+                        Row() {
+                            FractalChoice(selectedFractal)
+                            Spacer(Modifier.weight(1f))
+                            Switch(
+                                checked = animate.value,
+                                enabled = true,
+                                onCheckedChange = { isAnimate -> animate.value = isAnimate },
+                                modifier = Modifier.scale(0.5f).padding(0.dp).height(28.dp))
+                            Text(
+                                text = "Animate",
+                                modifier = Modifier.padding(horizontal = 2.dp, vertical = 2.dp),
+                            )
+                        }
 
                         // https://developer.android.com/jetpack/compose/migrate/interoperability-apis/views-in-compose
                         AndroidView(
                             factory = { FractalSurfaceView(it) },
-                            update = { fsv -> fsv.updateFractalType(selectedFractal.value) },
+                            update = { fsv -> fsv.updateFractalType(selectedFractal.value, animate.value) },
                         )
                     }
                 }
@@ -127,7 +144,11 @@ fun AppPreview() {
     FractalTheme {
         Column() {
             InfoText()
-            FractalChoice(remember { mutableStateOf(FractalType.Julia) })
+            Row() {
+                FractalChoice(remember { mutableStateOf(FractalType.Julia) })
+                Spacer(Modifier.weight(1f))
+                Switch(checked = true, onCheckedChange = { isAnimate -> })
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ var squareCoords = floatArrayOf(
 
 class FullScreenSquare {
     private var mProgram: Int
+    private var mandelbrotProgram: Int
 
     private val vertexShaderCode = """
         attribute vec4 vPosition;
@@ -29,7 +30,51 @@ class FullScreenSquare {
           gl_Position = transformedPos; // Always cover the whole drawing area
           fs_pos = vPosition.xy * vec2(aspectRatio, 1.0); // Rescale appropriately
         }
-    """
+    """.trimIndent()
+
+    private val mandelbrotShaderCode = """
+        precision mediump float;
+        varying vec2 fs_pos;
+  
+        uniform vec4 vColor;
+        uniform float time;
+        uniform vec2 touchPos;
+        uniform sampler2D fractalGradient;
+   
+        void main() {
+            int maxIterations = 25;
+            int iterations = 0;
+            float dist = 0.10;
+            float speed = 0.5;
+            float thresholdSqd = 4.0;
+            
+            
+            vec2 timePoint = vec2(cos(time*speed) * dist, sin(time * speed) * dist);
+            
+            // Make this a smaller quad by increasing our x and y positoins
+            vec2 z = vec2(0.0, 0.0); 
+            vec2 offset = vec2(fs_pos.x * 2.5, fs_pos.y * 2.5) + vec2(-touchPos.x, touchPos.y) + timePoint;
+            while (iterations < maxIterations && dot(z, z) < thresholdSqd)
+            {
+                vec2 zSqd = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y);
+                z = zSqd + offset;
+                ++iterations;
+            }
+            
+            if (iterations == maxIterations || iterations < 2)
+            {
+                gl_FragColor = vec4(0, 0, 0, 1);
+            }
+            else
+            {
+               // gl_FragColor = vec4(1, 0, 0, 1);
+                gl_FragColor = vec4(texture2D(fractalGradient, vec2(float(iterations) / float(maxIterations), 1.0)).xy, 0.2, 1.0);
+            }
+        
+        
+          // gl_FragColor = vec4(texture2D(fractalGradient, vec2(fs_pos.x, 0)).xyz, 1.0); // , abs(fs_pos.x), 1.0);
+        }
+""".trimIndent()
 
     // TODO anything interesting for fractals will be here!
     private val fragmentShaderCode = """
@@ -73,18 +118,25 @@ class FullScreenSquare {
         
           // gl_FragColor = vec4(texture2D(fractalGradient, vec2(fs_pos.x, 0)).xyz, 1.0); // , abs(fs_pos.x), 1.0);
         }
-    """
+    """.trimIndent()
 
     private var fractalGradientTexture: Int = 0
 
     init {
         val vertexShader: Int = loadShader(GLES20.GL_VERTEX_SHADER, vertexShaderCode)
         val fragmentShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode)
+        val mandelbrotShader: Int = loadShader(GLES20.GL_FRAGMENT_SHADER, mandelbrotShaderCode);
 
         // create empty OpenGL ES Program
         mProgram = GLES20.glCreateProgram().also {
             GLES20.glAttachShader(it, vertexShader)
             GLES20.glAttachShader(it, fragmentShader)
+            GLES20.glLinkProgram(it)
+        }
+
+        mandelbrotProgram = GLES20.glCreateProgram().also {
+            GLES20.glAttachShader(it, vertexShader)
+            GLES20.glAttachShader(it, mandelbrotShader)
             GLES20.glLinkProgram(it)
         }
 
@@ -175,7 +227,12 @@ class FullScreenSquare {
 
     fun draw(fractalOptions: FractalOptions) {
         // Add program to OpenGL ES environment
-        GLES20.glUseProgram(mProgram)
+        if (fractalOptions.fractalType == FractalType.Julia) {
+            GLES20.glUseProgram(mProgram)
+        } else {
+            GLES20.glUseProgram(mandelbrotProgram)
+        }
+
 
         // get handle to vertex shader's vPosition member
         GLES20.glGetAttribLocation(mProgram, "vPosition").also {
@@ -210,7 +267,12 @@ class FullScreenSquare {
             }
 
             GLES20.glGetUniformLocation(mProgram, "time").also { aspectRatioHandle ->
-                GLES20.glUniform1f(aspectRatioHandle, fractalOptions.currentTime)
+                if (fractalOptions.animate) {
+                    GLES20.glUniform1f(aspectRatioHandle, fractalOptions.currentTime)
+                }
+                else {
+                    GLES20.glUniform1f(aspectRatioHandle, 0.0f)
+                }
             }
 
             GLES20.glGetUniformLocation(mProgram, "fractalGradient").also { gradientHandle ->

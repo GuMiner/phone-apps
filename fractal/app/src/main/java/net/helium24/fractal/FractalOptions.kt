@@ -7,6 +7,8 @@ class FractalOptions {
     var aspectRatio: Float = 1.0f
     var currentTime: Float = 1.0f
 
+    var animate: Boolean = true
+
     // Both of these are updated from FractalSurfaceView and must be @Volatile
     @Volatile
     var touchX: Float = 0.0f
@@ -15,6 +17,6 @@ class FractalOptions {
     var touchY: Float = 0.0f
 
     fun updateTime() {
-        currentTime = (SystemClock.currentThreadTimeMillis().toFloat() / 1000.0f)
+        currentTime = ((SystemClock.elapsedRealtime() % 100000).toFloat() / 1000.0f)
     }
 }

@@ -17,8 +17,8 @@ class FractalSurfaceView(context: Context) : GLSurfaceView(context) {
         renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
     }
 
-    fun updateFractalType(fractalType: FractalType) {
-        renderer.updateFractalType(fractalType)
+    fun updateFractalType(fractalType: FractalType, animate: Boolean) {
+        renderer.updateFractalType(fractalType, animate)
     }
 
     override fun onTouchEvent(e: MotionEvent): Boolean {

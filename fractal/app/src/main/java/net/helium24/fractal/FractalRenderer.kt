@@ -13,8 +13,9 @@ class FractalRenderer : GLSurfaceView.Renderer {
 
     private var fractalOptions: FractalOptions = FractalOptions()
 
-    fun updateFractalType(fractalType: FractalType) {
+    fun updateFractalType(fractalType: FractalType, animate: Boolean) {
         fractalOptions.fractalType = fractalType
+        fractalOptions.animate = animate
     }
 
     fun updateTouchPosition(touchX: Float, touchY: Float) {
