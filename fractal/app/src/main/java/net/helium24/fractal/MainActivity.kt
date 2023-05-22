@@ -147,7 +147,7 @@ fun AppPreview() {
             Row() {
                 FractalChoice(remember { mutableStateOf(FractalType.Julia) })
                 Spacer(Modifier.weight(1f))
-                Switch(checked = true, onCheckedChange = { isAnimate -> })
+                Switch(checked = true, onCheckedChange = { _ -> })
             }
         }
     }
