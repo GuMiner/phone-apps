@@ -27,7 +27,6 @@ class Credential(val Name: String) {
         System.arraycopy(secretKey.encoded, 32, iv, 0, 16)
         val ivSpec: AlgorithmParameterSpec = IvParameterSpec(iv)
 
-
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(Cipher.DECRYPT_MODE, SecretKeySpec(key, "AES"), ivSpec)
 
@@ -36,7 +35,7 @@ class Credential(val Name: String) {
 
         System.arraycopy(encodedBytes, 4, encodedBytesWithoutIvCount, 0, encodedBytesWithoutIvCount.size)
         val result = cipher.doFinal(encodedBytesWithoutIvCount)
-        val resultString = result.toString()
+        val resultString = result.drop(16).toString()
 
         return resultString
     }
