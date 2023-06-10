@@ -35,8 +35,8 @@ class Credential(val Name: String) {
 
         System.arraycopy(encodedBytes, 4, encodedBytesWithoutIvCount, 0, encodedBytesWithoutIvCount.size)
         val result = cipher.doFinal(encodedBytesWithoutIvCount)
-        val resultString = result.drop(16).toString()
 
-        return resultString
+        // Strip off the IV and any padding
+        return result.decodeToString(iv.size).trim('\u0000')
     }
 }

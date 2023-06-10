@@ -15,6 +15,6 @@ class CredentialTest {
             "testKey",
             "EAAAAFeKLjg286jKMGM3IAcMf15zL3py5Ki45NTalikl6YB8jVjdci/hhzQjM67y680aNw=="
         )
-        assertEquals(decryptedCred, "testValue")
+        assertEquals("testValue", decryptedCred)
     }
 }
