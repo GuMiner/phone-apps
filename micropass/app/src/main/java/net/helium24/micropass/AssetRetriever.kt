@@ -13,6 +13,7 @@ class AssetRetriever {
     }
 
     fun GetAsset(context: Context, name: String): String {
-        return context.assets.open(name).bufferedReader().use { it.readText() }
+        return context.assets.open(name).bufferedReader(Charsets.UTF_8).use { it.readText() }
+            .replace("\uFEFF", "") // Strip the UTF8 BOM if it still makes it through
     }
 }
