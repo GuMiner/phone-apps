@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +47,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             MicropassTheme {
-                var aesKey = remember { mutableStateOf("") }
+                val aesKey = remember { mutableStateOf("") }
+                val filter = remember { mutableStateOf("") }
 
                 val dialogSettings = DialogSettings(
                     remember { mutableStateOf(false) },
@@ -69,10 +72,18 @@ class MainActivity : ComponentActivity() {
                             )
                             Greeting()
                         }
+                        TextField(
+                            value = filter.value,
+                            onValueChange = {
+                                filter.value = it
+                            },
+                            label = { Text("Filter")}
+                        )
                         CredentialList(
                             assets.map { Credential(it) },
                             appContext,
                             aesKey,
+                            filter,
                             dialogSettings
                         )
                         TogglableAlertDialog(dialogSettings)
@@ -94,27 +105,32 @@ fun Greeting() {
 }
 
 @Composable
-fun CredentialList(credentials: List<Credential>, appContext: Context, aesKey: MutableState<String>, dialogSettings: DialogSettings) {
-    Column {
+fun CredentialList(credentials: List<Credential>, appContext: Context,
+                   aesKey: MutableState<String>, filter: MutableState<String>, dialogSettings: DialogSettings) {
+    Column(
+        modifier = Modifier
+            .verticalScroll(rememberScrollState())
+    ) {
         credentials.forEach { credential ->
-            CredentialRow(credential, appContext, aesKey, dialogSettings)
+            if (credential.SimplifiedName().contains(filter.value, true)) {
+                CredentialRow(credential, appContext, aesKey, dialogSettings)
+            }
         }
     }
 }
 @Composable
 fun CredentialRow(credential: Credential, appContext: Context, aesKey: MutableState<String>, dialogSettings: DialogSettings) {
     Row() {
-        val simplifiedName = credential.Name.replace(".txt", "")
         val assetRetriever = AssetRetriever()
 
         Text(
-            text = simplifiedName,
+            text = credential.SimplifiedName(),
             style = TextStyle( // Theoretically this could move to 'Type.kt'
                 fontSize = 26.sp,
             ),
             modifier = Modifier.clickable(onClick = {
                 dialogSettings.ShouldOpenDialog.value = true
-                dialogSettings.DialogTitle.value = simplifiedName
+                dialogSettings.DialogTitle.value = credential.SimplifiedName()
 
                 val credentialContent = assetRetriever.GetAsset(appContext, credential.Name)
                 try {

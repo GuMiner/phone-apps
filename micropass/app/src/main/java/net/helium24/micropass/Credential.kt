@@ -11,6 +11,9 @@ import javax.crypto.spec.SecretKeySpec
 
 
 class Credential(val Name: String) {
+    fun SimplifiedName(): String {
+        return Name.replace(".txt", "")
+    }
     fun DecryptCredential(password: String, base64Value: String): String {
         // https://github.com/GuMiner/CommonNet/blob/master/CommonNet/Cryptography/Aes256ByteEncoder.cs
         val defaultSalt = "CodeLibraryCryptography_abc123^%$".toByteArray()
