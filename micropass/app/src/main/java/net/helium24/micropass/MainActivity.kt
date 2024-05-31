@@ -37,6 +37,9 @@ class DialogSettings(
     val DialogContent: MutableState<String>
 )
 { }
+
+var aesKey = mutableStateOf("");
+
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,10 +48,10 @@ class MainActivity : ComponentActivity() {
         val appContext = this.applicationContext;
         val assetRetriever = AssetRetriever()
         val assets = assetRetriever.ListAssets(appContext)
+        var credentials = assets.map { Credential(it) }
 
         setContent {
             MicropassTheme {
-                val aesKey = remember { mutableStateOf("") }
                 val filter = remember { mutableStateOf("") }
 
                 val dialogSettings = DialogSettings(
@@ -82,9 +85,8 @@ class MainActivity : ComponentActivity() {
                             label = { Text("Filter")}
                         )
                         CredentialList(
-                            assets.map { Credential(it) },
+                            credentials,
                             appContext,
-                            aesKey,
                             filter,
                             dialogSettings
                         )
@@ -108,20 +110,22 @@ fun Greeting() {
 
 @Composable
 fun CredentialList(credentials: List<Credential>, appContext: Context,
-                   aesKey: MutableState<String>, filter: MutableState<String>, dialogSettings: DialogSettings) {
+                   filter: MutableState<String>, dialogSettings: DialogSettings) {
     Column(
         modifier = Modifier
             .verticalScroll(rememberScrollState())
     ) {
+        var limit = 50;
         credentials.forEach { credential ->
-            if (credential.SimplifiedName().contains(filter.value, true)) {
-                CredentialRow(credential, appContext, aesKey, dialogSettings)
+            if (limit > 0 && credential.SimplifiedName().contains(filter.value, true)) {
+                CredentialRow(credential, appContext, dialogSettings)
+                limit = limit - 1;
             }
         }
     }
 }
 @Composable
-fun CredentialRow(credential: Credential, appContext: Context, aesKey: MutableState<String>, dialogSettings: DialogSettings) {
+fun CredentialRow(credential: Credential, appContext: Context, dialogSettings: DialogSettings) {
     Row() {
         val assetRetriever = AssetRetriever()
 

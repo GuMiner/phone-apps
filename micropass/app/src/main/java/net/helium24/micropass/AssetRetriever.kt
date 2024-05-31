@@ -4,8 +4,6 @@ import android.content.Context
 import android.content.res.AssetManager
 
 
-
-
 // Although this theoretically could interface with the Google Drive API, this is substantially simpler.
 class AssetRetriever {
     fun ListAssets(context: Context): List<String> {
